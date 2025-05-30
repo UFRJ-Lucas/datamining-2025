@@ -1,7 +1,9 @@
 import os
 import json
 import zipfile
+import re
 import psycopg2
+from psycopg2.extras import execute_values
 import time
 from tqdm import tqdm
 
@@ -30,6 +32,7 @@ def connect(retries=10, delay=3):
     raise Exception("Could not connect to the database after several attempts.")
 
 def process_file(json_data, cursor):
+    rows = []
     for item in json_data:
         try:
             # Verificar se a linha é válida
@@ -41,29 +44,36 @@ def process_file(json_data, cursor):
             lat = float(item["latitude"].replace(",", "."))
             lon = float(item["longitude"].replace(",", "."))
 
-            cursor.execute("""
-                INSERT INTO gps_data (ordem, linha, datahora, datahoraenvio, datahoraservidor, velocidade, latitude, longitude, geom)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
-            """, (
+            # Insere na lista de rows para inserção em lote
+            rows.append((
                 item["ordem"],
                 line,
-                int(item["datahora"]),
-                int(item["datahoraenvio"]),
-                int(item["datahoraservidor"]),
-                int(item["velocidade"]),
-                lat,
+                item["datahora"],
+                item["datahoraenvio"],
+                item["datahoraservidor"],
+                item["velocidade"],
                 lon,
+                lat,
                 lon, lat
             ))
-
         except Exception as e:
-            continue  # ou logar erro
+            print(f"Erro ao processar item: {item} - {e}")
+
+    if rows:
+        execute_values(cursor, """
+            INSERT INTO gps_data (
+                ordem, linha, datahora, datahoraenvio, datahoraservidor, velocidade, longitude, latitude, geom
+            )
+            VALUES %s
+            ON CONFLICT DO NOTHING
+        """, rows, template="(%s, %s, %s, %s, %s, %s, %s, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326))")
 
 def run_etl():
     conn = connect()
     cur = conn.cursor()
 
     gps_dir = "/app/dados/gps"
+    filename_pattern = re.compile(r"2024-\d{2}-\d{2}_(0[6-9]|1[0-9]|2[0-3])\.json$")
 
     for zip_name in tqdm(os.listdir(gps_dir)):
         if not zip_name.endswith(".zip"):
@@ -71,7 +81,9 @@ def run_etl():
 
         with zipfile.ZipFile(os.path.join(gps_dir, zip_name), 'r') as archive:
             for filename in archive.namelist():
-                if not filename.endswith(".json"):
+                base_filename = os.path.basename(filename)
+                if not filename_pattern.match(base_filename):
+                    print(f"Skipping file {filename} due to pattern mismatch")
                     continue
 
                 with archive.open(filename) as f:

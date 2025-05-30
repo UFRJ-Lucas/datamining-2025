@@ -10,8 +10,8 @@ CREATE TABLE gps_data (
     datahoraenvio BIGINT,
     datahoraservidor BIGINT,
     velocidade INTEGER,
-    latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION,
+    latitude DOUBLE PRECISION,
     geom GEOMETRY(Point, 4326)
 );
 
