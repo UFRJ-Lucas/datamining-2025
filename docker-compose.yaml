@@ -25,17 +25,6 @@ services:
       - "8080:80"
     depends_on:
       - postgis
-  
-  etl:
-    build:
-      context: .
-      dockerfile: etl/Dockerfile
-    volumes:
-      - ./etl:/app
-      - ./dados:/app/dados
-    depends_on:
-      postgis:
-        condition: service_healthy
 
 networks:
   default:

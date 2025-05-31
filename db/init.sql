@@ -1,7 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 
-DROP TABLE IF EXISTS gps_data CASCADE;
-
 CREATE TABLE gps_data (
     id SERIAL PRIMARY KEY,
     ordem TEXT,

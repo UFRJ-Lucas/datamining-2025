@@ -7,14 +7,19 @@ from psycopg2.extras import execute_values
 import time
 from tqdm import tqdm
 
+# Mudar os parâmetros de conexão com o banco de dados conforme necessário
 DB_PARAMS = {
-    "host": "postgis",
+    "host": "localhost",
     "dbname": "busdata",
     "user": "user",
     "password": "pass",
     "port": "5432"
 }
 
+# Diretório onde os arquivos zip com dados GPS estão armazenados
+DATA_DIR = "./dados/gps"
+
+# Lista de linhas válidas
 VALID_LINES = {
     "483", "864", "639", "3", "309", "774", "629", "371", "397", "100", "838", "315", "624", "388", "918",
     "665", "328", "497", "878", "355", "138", "606", "457", "550", "803", "917", "638", "2336", "399", "298",
@@ -72,7 +77,10 @@ def run_etl():
     conn = connect()
     cur = conn.cursor()
 
-    gps_dir = "/app/dados/gps"
+    gps_dir = DATA_DIR
+    if not os.path.exists(gps_dir):
+        print(f"Directory {gps_dir} does not exist.")
+        return
     filename_pattern = re.compile(r"2024-\d{2}-\d{2}_(0[6-9]|1[0-9]|2[0-3])\.json$")
 
     for zip_name in tqdm(os.listdir(gps_dir)):
