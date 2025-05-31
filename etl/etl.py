@@ -36,6 +36,14 @@ def connect(retries=10, delay=3):
             time.sleep(delay)
     raise Exception("Could not connect to the database after several attempts.")
 
+def drop_indexes(cursor):
+    cursor.execute("DROP INDEX IF EXISTS idx_gps_geom;")
+    cursor.execute("DROP INDEX IF EXISTS idx_gps_datahora;")
+
+def create_indexes(cursor):
+    cursor.execute("CREATE INDEX idx_gps_geom ON gps_data USING GIST (geom);")
+    cursor.execute("CREATE INDEX idx_gps_datahora ON gps_data (datahoraservidor);")
+
 def process_file(json_data, cursor):
     rows = []
     for item in json_data:
@@ -77,6 +85,10 @@ def run_etl():
     conn = connect()
     cur = conn.cursor()
 
+    # 1. Remove índices antes da carga
+    drop_indexes(cur)
+    conn.commit()
+
     gps_dir = DATA_DIR
     if not os.path.exists(gps_dir):
         print(f"Directory {gps_dir} does not exist.")
@@ -102,6 +114,10 @@ def run_etl():
                     except Exception as e:
                         print(f"Erro ao processar {filename}: {e}")
                         conn.rollback()
+
+    # 2. Recria índices após a carga
+    create_indexes(cur)
+    conn.commit()
 
     cur.close()
     conn.close()
