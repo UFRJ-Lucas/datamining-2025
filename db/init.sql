@@ -4,7 +4,7 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 -- Purpose: Generates a square grid within the spatial extent of a given table's geometry column.
 -- Parameters:
 --   p_table_name: Name of the table containing the geometry column.
---   p_grid_size: Size of each square in the grid (in degrees).
+--   p_grid_size: Size of each square in the grid (in meters).
 -- Returns:
 --   A table with three columns:
 --     - grid_i: Row index of the square in the grid.
@@ -38,9 +38,11 @@ BEGIN
           	p_table_name;
     END IF;
 
+    v_bounds := ST_Transform(v_bounds, 3857);  -- Transform to Web Mercator for grid calculations
+
 	-- 2. Make a square grid with these boundaries
 	RETURN QUERY 
-		SELECT g.i AS grid_i, g.j AS grid_j, g.geom AS square_geom 
+		SELECT g.i AS grid_i, g.j AS grid_j, ST_Transform(g.geom, 4326) AS square_geom 
 		FROM ST_SquareGrid(p_grid_size, v_bounds) as g;
 END
 $BODY$;
@@ -50,7 +52,7 @@ $BODY$;
 -- Parameters:
 --   p_table_name: Name of the table containing GPS data.
 --   p_bus_line: The bus line to analyze.
---   p_tolerance: Tolerance for simplifying the trajectory (default is 0.01).
+--   p_tolerance: Tolerance for simplifying the trajectory (default is 10).
 -- Returns:
 --   A table with the following columns:
 --     - ordem: The bus id.
@@ -58,7 +60,7 @@ $BODY$;
 CREATE OR REPLACE FUNCTION public.estimate_bus_trajectory(
 	p_table_name text,
 	p_bus_line text,
-    tolerance double precision DEFAULT 0.01
+    tolerance double precision DEFAULT 10
 )
 RETURNS TABLE(
     ordem text,
@@ -73,7 +75,7 @@ BEGIN
 	-- 1. Get a temporary table of the bus points for the specified line
     EXECUTE format('
         CREATE TEMP TABLE IF NOT EXISTS temp_bus_points AS
-        SELECT ordem, geom, to_timestamp(datahoraservidor/1000) AS ts
+        SELECT ordem, ST_Transform(geom, 3857) AS geom, to_timestamp(datahoraservidor/1000) AS ts
         FROM %I
         WHERE linha = %L',
         p_table_name, p_bus_line
@@ -81,13 +83,59 @@ BEGIN
 
 	-- 2. Return a simplified line geometry of the bus trajectory
     RETURN QUERY EXECUTE format('
-        SELECT ordem, ST_Simplify(ST_MakeLine(geom ORDER BY ts), %L) AS trajectory
+        SELECT ordem, ST_Transform(ST_SimplifyPreserveTopology(ST_MakeLine(geom ORDER BY ts), %L), 4326) AS trajectory
         FROM temp_bus_points
         GROUP BY ordem',
         tolerance);
     
     -- Clean up temporary table
     DROP TABLE IF EXISTS temp_bus_points;
+END
+$BODY$;
+
+-- Function: get_trajectory_buffer
+-- Purpose: Returns a buffer around the bus trajectory for a specified bus line.
+-- Parameters:
+--   p_start_point: The start point of the trajectory.
+--   p_end_point: The end point of the trajectory.
+--   p_trajectory_line: The trajectory line geometry.
+--   p_buffer_size: The size of the buffer around the trajectory (default is 30 meters).
+-- Returns:
+--   A table with a single column:
+--     - trajectory_buffer: A geometry representing the buffer around the trajectory line.
+CREATE OR REPLACE FUNCTION public.get_trajectory_buffer(
+	p_start_point geometry,
+    p_end_point geometry,
+    p_trajectory_line geometry,
+    p_buffer_size double precision DEFAULT 30
+)
+RETURNS TABLE(
+    trajectory_buffer geometry
+)
+LANGUAGE 'plpgsql'
+COST 100
+VOLATILE PARALLEL UNSAFE 
+ROWS 1000
+AS $BODY$
+BEGIN
+	RETURN QUERY EXECUTE format('
+        WITH fractions AS (
+            SELECT 
+                ST_LineLocatePoint(%L, %L) AS start_frac,
+                ST_LineLocatePoint(%L, %L) AS end_frac
+        )
+        SELECT 
+            ST_Transform(
+                ST_Buffer(
+                    ST_Transform(
+                        ST_LineSubstring(%L, LEAST(start_frac, end_frac), GREATEST(start_frac, end_frac)), 3857
+                    ), %L
+                ), 4326
+            ) AS trajectory_buffer
+        FROM fractions',
+        p_trajectory_line, p_start_point, p_trajectory_line, p_end_point,
+        p_trajectory_line, p_buffer_size
+    );
 END
 $BODY$;
 
