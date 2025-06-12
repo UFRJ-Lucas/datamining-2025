@@ -17,6 +17,7 @@ DB_PARAMS = {
 
 # Diretório onde os arquivos zip com dados GPS estão armazenados
 DATA_DIR = "./dados/gps"
+TEST_DATA_DIR = "./dados/gps_test"
 
 # Lista de linhas válidas
 VALID_LINES = {
@@ -56,15 +57,6 @@ def create_table_from_zip(conn, cursor, zip_name):
 
     print(f"Table {table_name} created or already exists.")
     return table_name
-
-def create_indexes_for_table(conn, cursor, table_name):
-    """Create indexes for the new table"""
-    print(f"Creating indexes for table {table_name}...")
-    cursor.execute(f"""
-        CREATE INDEX IF NOT EXISTS idx_{table_name}_geom ON {table_name} USING GIST (geom);
-        CREATE INDEX IF NOT EXISTS idx_{table_name}_datahora ON {table_name} (datahoraservidor);
-    """)
-    conn.commit()
 
 def process_file(json_data, table_name, cursor):
     rows = []
@@ -139,12 +131,51 @@ def run_etl():
                         print(f"Error processing file '{filename}': {e}")
                         conn.rollback()
 
-        create_indexes_for_table(conn, cur, table_name)
-
     # Fecha a conexão com o banco de dados
     cur.close()
     conn.close()
     print("ETL process completed successfully.")
 
+def create_partitions():
+    # Não é a melhor forma de fazer, mas 
+    conn = connect_to_database()
+    cur = conn.cursor()
+
+    # Obtém a lista de tabelas GPS
+    cur.execute("SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'gps_20%';")
+    tables = cur.fetchall()
+
+    for (table_name,) in tables:
+        temp_name = f"old_{table_name}"
+        cur.execute(f'ALTER TABLE {table_name} RENAME TO {temp_name};')
+
+        cur.execute(f"SELECT MIN(datahoraservidor), MAX(datahoraservidor) FROM {temp_name}")
+        min_ts, max_ts = cur.fetchone()
+        if min_ts is None or max_ts is None:
+            print(f"Table {table_name} is empty, skipping.")
+            continue
+
+        cur.execute(f"""
+            CREATE TABLE {table_name} PARTITION OF gps_data
+            FOR VALUES FROM ({min_ts}) TO ({max_ts+1});
+        """)
+
+        cur.execute(f"""
+            INSERT INTO {table_name} (ordem, linha, datahora, datahoraenvio, datahoraservidor, velocidade, longitude, latitude, geom)
+            SELECT ordem, linha, datahora, datahoraenvio, datahoraservidor, velocidade, longitude, latitude, geom
+            FROM {temp_name};
+        """)
+
+        cur.execute(f"DROP TABLE {temp_name};")
+
+        print(f"Partition {table_name} created.")
+
+        conn.commit()
+
+    cur.close()
+    conn.close()
+    print("Partition creation completed successfully.")
+
 if __name__ == "__main__":
     run_etl()
+    create_partitions()
