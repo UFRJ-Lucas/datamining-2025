@@ -166,6 +166,10 @@ def create_partitions():
             FROM {temp_name};
         """)
 
+        cur.execute(f"""
+            CREATE INDEX IF NOT EXISTS idx_{table_name}_geom ON {table_name} USING GIST(geom);
+        """)
+
         cur.execute(f"DROP TABLE {temp_name};")
 
         print(f"Partition {table_name} created.")

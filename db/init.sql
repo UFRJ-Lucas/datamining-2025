@@ -6,51 +6,6 @@ SELECT pg_reload_conf();
 
 CREATE EXTENSION IF NOT EXISTS postgis;
 
--- Function: make_square_grid (EXCLUDE)
--- Purpose: Generates a square grid within the spatial extent of a given table's geometry column.
--- Parameters:
---   p_table_name: Name of the table containing the geometry column.
---   p_grid_size: Size of each square in the grid (in degrees).
--- Returns:
---   A table with three columns:
---     - grid_i: Row index of the square in the grid.
---     - grid_j: Column index of the square in the grid.
---     - square_geom: Geometry of the square (as a polygon).
-CREATE OR REPLACE FUNCTION public.make_square_grid(
-	p_table_name text,
-	p_grid_size double precision
-)
-RETURNS TABLE(
-    grid_i integer, 
-    grid_j integer, 
-    square_geom geometry
-) 
-LANGUAGE 'plpgsql'
-COST 100
-STABLE PARALLEL SAFE 
-ROWS 1000
-AS $BODY$
-DECLARE
-	v_bounds geometry;  -- Bounding box of the table
-BEGIN
-	-- 1. Get spatial extent of the points from the table
-	EXECUTE format(
-		'SELECT ST_SetSRID(ST_EstimatedExtent(%L, ''geom'')::geometry, 4326)', p_table_name
-    ) INTO v_bounds;
-
-	IF v_bounds IS NULL THEN
-        RAISE EXCEPTION
-			'Table % does not contain any geometry (column "geom")',
-          	p_table_name;
-    END IF;
-
-	-- 2. Make a square grid with these boundaries
-	RETURN QUERY 
-		SELECT g.i AS grid_i, g.j AS grid_j, g.geom AS square_geom 
-		FROM ST_SquareGrid(p_grid_size, v_bounds) as g;
-END
-$BODY$;
-
 -- Function: make_grid
 -- Purpose: Generates a grid of squares based on the spatial extent of a given table's geometry column.
 -- Parameters:
@@ -59,57 +14,31 @@ $BODY$;
 -- Returns:
 --   A table with five columns:
 --     - pts_count: Number of points in the square.
---     - grid_geom: Geometry of the square (as a polygon).
+--     - bus_line: The bus line associated with the points in the square.
 --     - mean_point: Mean point of the square (centroid).
---     - grid_i: Row index of the square in the grid.
---     - grid_j: Column index of the square in the grid.
+--     - grid_point: Point where the geom was snapped to.
 CREATE OR REPLACE FUNCTION public.make_grid(
 	p_table_name text,
 	p_grid_size double precision
 )
 RETURNS TABLE(
     pts_count bigint,
-    grid_geom geometry,
+    bus_line text,
     mean_point geometry,
-    grid_i integer, 
-    grid_j integer
-) 
-LANGUAGE 'plpgsql'
-COST 100
-STABLE PARALLEL SAFE 
-ROWS 1000
+    grid_point geometry
+)
+LANGUAGE 'plpgsql' 
 AS $BODY$
-DECLARE
-	v_bounds geometry;  -- Bounding box of the table
 BEGIN
-	-- 1. Get spatial extent of the points from the table
-	EXECUTE format(
-		'SELECT ST_SetSRID(ST_EstimatedExtent(%L, ''geom'')::geometry, 4326)', p_table_name
-    ) INTO v_bounds;
-
-	IF v_bounds IS NULL THEN
-        RAISE EXCEPTION
-			'Table % does not contain any geometry (column "geom")',
-          	p_table_name;
-    END IF;
-
-    -- 2. Make a square grid with these boundaries
     RETURN QUERY EXECUTE format('
         SELECT
-            COUNT(pts.geom) AS pts_count,
-            g.geom AS grid_geom,
-            ST_Centroid(ST_Collect(pts.geom)) AS mean_point,
-            g.i AS grid_i, 
-            g.j AS grid_j
-        FROM
-            %I AS pts
-        INNER JOIN
-            ST_SquareGrid(%L, %L) AS g
-        ON 
-            ST_Intersects(pts.geom, g.geom)
-        GROUP BY 
-            g.i, g.j, g.geom
-    ', p_table_name, p_grid_size, v_bounds);
+            COUNT(*) AS pts_count,
+            linha AS bus_line,
+            ST_Centroid(ST_Collect(geom)) AS mean_point,
+            ST_SnapToGrid(geom, %L) AS grid_point
+        FROM %I
+        GROUP BY bus_line, grid_point
+    ', p_grid_size, p_table_name);
 END
 $BODY$;
 
@@ -122,10 +51,8 @@ $BODY$;
 -- Returns:
 --   A table with five columns:
 --     - pts_count: Number of points in the square.
---     - grid_geom: Geometry of the square (as a polygon).
 --     - mean_point: Mean point of the square (centroid).
---     - grid_i: Row index of the square in the grid.
---     - grid_j: Column index of the square in the grid.
+--     - grid_point: Point where the geom was snapped to.
 CREATE OR REPLACE FUNCTION public.make_grid(
 	p_table_name text,
     p_bus_line text,
@@ -133,47 +60,21 @@ CREATE OR REPLACE FUNCTION public.make_grid(
 )
 RETURNS TABLE(
     pts_count bigint,
-    grid_geom geometry,
     mean_point geometry,
-    grid_i integer, 
-    grid_j integer
+    grid_point geometry
 ) 
 LANGUAGE 'plpgsql'
-COST 100
-STABLE PARALLEL SAFE 
-ROWS 1000
 AS $BODY$
-DECLARE
-	v_bounds geometry;  -- Bounding box of the table
 BEGIN
-	-- 1. Get spatial extent of the points from the table
-	EXECUTE format(
-		'SELECT ST_SetSRID(ST_EstimatedExtent(%L, ''geom'')::geometry, 4326)', p_table_name
-    ) INTO v_bounds;
-
-	IF v_bounds IS NULL THEN
-        RAISE EXCEPTION
-			'Table % does not contain any geometry (column "geom")',
-          	p_table_name;
-    END IF;
-
-    -- 2. Make a square grid with these boundaries
     RETURN QUERY EXECUTE format('
         SELECT
-            COUNT(pts.geom) AS pts_count,
-            g.geom AS grid_geom,
-            ST_Centroid(ST_Collect(pts.geom)) AS mean_point,
-            g.i AS grid_i, 
-            g.j AS grid_j
-        FROM
-            %I AS pts
-        INNER JOIN
-            ST_SquareGrid(%L, %L) AS g ON ST_Intersects(pts.geom, g.geom)
-        WHERE
-            linha = %L
-        GROUP BY 
-            g.i, g.j, g.geom
-    ', p_table_name, p_grid_size, v_bounds, p_bus_line);
+            COUNT(*) AS pts_count,
+            ST_Centroid(ST_Collect(geom)) AS mean_point,
+            ST_SnapToGrid(geom, %L) AS grid_point
+        FROM %I
+        WHERE linha = %L
+        GROUP BY grid_point
+    ', p_grid_size, p_table_name, p_bus_line);
 END
 $BODY$;
 
@@ -182,7 +83,7 @@ $BODY$;
 -- Parameters:
 --   p_table_name: Name of the table containing GPS data.
 --   p_bus_line: The bus line to analyze.
---   p_tolerance: Tolerance for simplifying the trajectory (default is 10).
+--   p_tolerance: Tolerance for simplifying the trajectory.
 -- Returns:
 --   A table with the following columns:
 --     - ordem: The bus id.
@@ -190,7 +91,7 @@ $BODY$;
 CREATE OR REPLACE FUNCTION public.estimate_bus_trajectory(
 	p_table_name text,
 	p_bus_line text,
-    tolerance double precision DEFAULT 10
+    tolerance double precision DEFAULT 0.01
 )
 RETURNS TABLE(
     ordem text,
@@ -205,7 +106,7 @@ BEGIN
 	-- 1. Get a temporary table of the bus points for the specified line
     EXECUTE format('
         CREATE TEMP TABLE IF NOT EXISTS temp_bus_points AS
-        SELECT ordem, ST_Transform(geom, 3857) AS geom, to_timestamp(datahoraservidor/1000) AS ts
+        SELECT ordem, geom, to_timestamp(datahoraservidor/1000) AS ts
         FROM %I
         WHERE linha = %L',
         p_table_name, p_bus_line
@@ -213,7 +114,7 @@ BEGIN
 
 	-- 2. Return a simplified line geometry of the bus trajectory
     RETURN QUERY EXECUTE format('
-        SELECT ordem, ST_Transform(ST_SimplifyPreserveTopology(ST_MakeLine(geom ORDER BY ts), %L), 4326) AS trajectory
+        SELECT ordem, ST_SimplifyPreserveTopology(ST_MakeLine(geom ORDER BY ts), %L) AS trajectory
         FROM temp_bus_points
         GROUP BY ordem',
         tolerance);
@@ -281,3 +182,5 @@ CREATE TABLE IF NOT EXISTS gps_data (
     latitude DOUBLE PRECISION,
     geom GEOMETRY(Point, 4326)
 ) PARTITION BY RANGE (datahoraservidor);
+
+CREATE INDEX IF NOT EXISTS idx_gps_data_geom ON gps_data USING GIST (geom);
