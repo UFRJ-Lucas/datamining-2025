@@ -1,0 +1,67 @@
+==========
+RESPOSTAS:
+==========
+
+Enviando arquivo: ./previsoes/teste-2024-05-16_08.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-16_08.json", "rmse" : 7756.4344118183335, "ids não encontrados" : 0, "ids testados" : 165541, "total na tabela" : 165541}
+
+Enviando arquivo: ./previsoes/teste-2024-05-16_12.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-16_12.json", "rmse" : 5516.2424716461, "ids não encontrados" : 0, "ids testados" : 163210, "total na tabela" : 163210}
+
+Enviando arquivo: ./previsoes/teste-2024-05-16_16.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-16_16.json", "rmse" : 8035.593023745834, "ids não encontrados" : 0, "ids testados" : 162697, "total na tabela" : 162697}
+
+Enviando arquivo: ./previsoes/teste-2024-05-16_20.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-16_20.json", "rmse" : 5417.582157571265, "ids não encontrados" : 0, "ids testados" : 162676, "total na tabela" : 162676}
+
+Enviando arquivo: ./previsoes/teste-2024-05-17_07.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-17_07.json", "rmse" : 7959.961622218095, "ids não encontrados" : 0, "ids testados" : 154806, "total na tabela" : 154806}
+
+Enviando arquivo: ./previsoes/teste-2024-05-17_11.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-17_11.json", "rmse" : 5417.744123149398, "ids não encontrados" : 0, "ids testados" : 168655, "total na tabela" : 168655}
+
+Enviando arquivo: ./previsoes/teste-2024-05-17_15.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-17_15.json", "rmse" : 7983.567425156082, "ids não encontrados" : 0, "ids testados" : 162697, "total na tabela" : 162697}
+
+Enviando arquivo: ./previsoes/teste-2024-05-17_19.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-17_19.json", "rmse" : 5479.644505327407, "ids não encontrados" : 0, "ids testados" : 161894, "total na tabela" : 161894}
+
+Enviando arquivo: ./previsoes/teste-2024-05-18_08.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-18_08.json", "rmse" : 5276.267594668275, "ids não encontrados" : 0, "ids testados" : 126597, "total na tabela" : 126597}
+
+Enviando arquivo: ./previsoes/teste-2024-05-18_12.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-18_12.json", "rmse" : 8153.415264411536, "ids não encontrados" : 0, "ids testados" : 133500, "total na tabela" : 133500}
+
+Enviando arquivo: ./previsoes/teste-2024-05-18_16.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-18_16.json", "rmse" : 5553.577896692278, "ids não encontrados" : 0, "ids testados" : 122920, "total na tabela" : 122920}
+
+Enviando arquivo: ./previsoes/teste-2024-05-18_20.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-18_20.json", "rmse" : 8362.752767353779, "ids não encontrados" : 0, "ids testados" : 117901, "total na tabela" : 117901}
+
+Enviando arquivo: ./previsoes/teste-2024-05-19_07.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-19_07.json", "rmse" : 4474.065638983629, "ids não encontrados" : 0, "ids testados" : 86040, "total na tabela" : 86040}
+
+Enviando arquivo: ./previsoes/teste-2024-05-19_11.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-19_11.json", "rmse" : 8982.834745412207, "ids não encontrados" : 0, "ids testados" : 95734, "total na tabela" : 95734}
+
+Enviando arquivo: ./previsoes/teste-2024-05-19_15.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-19_15.json", "rmse" : 5525.869413398589, "ids não encontrados" : 0, "ids testados" : 89757, "total na tabela" : 89757}
+
+Enviando arquivo: ./previsoes/teste-2024-05-19_19.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-19_19.json", "rmse" : 8509.877513418585, "ids não encontrados" : 0, "ids testados" : 89258, "total na tabela" : 89258}
+
+Enviando arquivo: ./previsoes/teste-2024-05-20_09.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-20_09.json", "rmse" : 7439.205350066049, "ids não encontrados" : 0, "ids testados" : 164537, "total na tabela" : 164537}
+
+Enviando arquivo: ./previsoes/teste-2024-05-20_13.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-20_13.json", "rmse" : 5526.294051826206, "ids não encontrados" : 0, "ids testados" : 162255, "total na tabela" : 162255}
+
+Enviando arquivo: ./previsoes/teste-2024-05-20_17.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-20_17.json", "rmse" : 8008.81667786879, "ids não encontrados" : 0, "ids testados" : 158782, "total na tabela" : 158782}
+
+Enviando arquivo: ./previsoes/teste-2024-05-20_21.json
+{"msg" : "Ok", "arquivo teste" : "teste-2024-05-20_21.json", "rmse" : 5426.098968568619, "ids não encontrados" : 0, "ids testados" : 144778, "total na tabela" : 144778}
+
+============
+FIM DO ENVIO
+============
