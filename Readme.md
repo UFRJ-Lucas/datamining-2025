@@ -8,6 +8,15 @@ Este projeto utiliza Docker Compose para subir um banco de dados PostGIS e ferra
 - [Docker Compose](https://docs.docker.com/compose/)
 - Python 3.8+ com `pip` (para rodar o ETL)
 
+Verifique também a estrutura das pastas de dados em `dados/`:
+
+```
+dados/
+    gps/
+    gps_teste/
+    gps_teste_final/
+```
+
 ## 2. Instalando as Dependências do Python
 
 Instale as dependências com o comando abaixo:
@@ -43,3 +52,16 @@ python etl/etl.py
 ```
 
 O script irá processar os arquivos de dados e inserir no banco de dados do container.
+
+## 5. Executando o caderno de previsão
+
+Com o banco de dados populado, já é possível executar `previsao_onibus.ipynb`. Este arquivo vai criar uma tabela com os buffers das linhas no banco, e gerar as previsões dos dados de teste final, que serão salvas na pasta `previsoes\`.
+
+## 6. Submetendo as previsões
+
+Após executar `previsao_onibus.ipynb`, basta executar o comando abaixo para enviar as previsões criadas para o endpoint do trabalho.
+
+```bash
+chmod +x enviar_previsoes.sh
+./enviar_previsoes.sh
+```
